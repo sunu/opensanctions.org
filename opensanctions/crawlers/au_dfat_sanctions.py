@@ -1,4 +1,6 @@
 from pprint import pprint  # noqa
+import datetime
+import math
 
 import pandas as pd
 from opensanctions.models import Entity
@@ -58,7 +60,6 @@ def parse_entry(context, data):
             alias = entity.create_alias()
             alias.name = row.get('name_of_individual_or_entity', '')
 
-    # pprint(entity.to_dict())
     context.emit(data=entity.to_dict())
 
 
@@ -71,6 +72,14 @@ def parse(context, data):
     batch = []
     for _, row in df.iterrows():
         row = row.to_dict()
+        # pandas sometimes converts suitable strings to datetime objects. Get
+        # them back to string.
+        for col in ['listing_information', 'date_of_birth', 'control_date']:
+            if isinstance(row.get(col), datetime.datetime):
+                row[col] = str(row.get(col))
+        for key, val in row.items():
+            if isinstance(val, float) and math.isnan(val):
+                row[key] = None
         row['control_date'] = str(row.get('control_date', ''))
         if row.get('name_type') == 'Primary Name':
             batch = [row]
